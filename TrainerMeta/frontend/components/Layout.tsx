@@ -3,7 +3,6 @@ import React from 'react';
 import Head from 'next/head';
 import Attribution from './Attribution';
 import AdSlot from './AdSlot';
-import '../styles.css';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
