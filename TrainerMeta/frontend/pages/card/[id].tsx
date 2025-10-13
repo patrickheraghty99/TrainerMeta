@@ -22,41 +22,65 @@ export default function CardPage({ data }: { data: any }) {
 
   return (
     <Layout>
-      <h2>{card.name} — {card.set_name} #{card.number}</h2>
-      {card.image_url ? <img src={card.image_url} alt={card.name} style={{ maxWidth: 320 }} /> : null}
+      {/* Back to search link */}
+      <div className="wrap backwrap"><a href="/">← Back to search</a></div>
 
-      <div className="table-wrap">
-        <table style={{ width:'100%', marginTop:16, borderCollapse:'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign:'left', borderBottom:'1px solid #ddd' }}>Source</th>
-              <th style={{ textAlign:'left', borderBottom:'1px solid #ddd' }}>Title</th>
-              <th style={{ textAlign:'left', borderBottom:'1px solid #ddd' }}>Condition</th>
-              <th style={{ textAlign:'right', borderBottom:'1px solid #ddd' }}>Price</th>
-              <th style={{ textAlign:'right', borderBottom:'1px solid #ddd' }}>Shipping</th>
-              <th style={{ textAlign:'left', borderBottom:'1px solid #ddd' }}>Last Updated</th>
-              <th style={{ textAlign:'left', borderBottom:'1px solid #ddd' }}>Link</th>
-            </tr>
-          </thead>
-          <tbody>
-            {listings.map((l:any)=>(
-              <tr key={l.id}>
-                <td>{l.source_code === 'ptcg' ? 'Pokémon TCG API' : l.source_code === 'ebay_sandbox' ? 'eBay (Sandbox Demo)' : l.source_code}</td>
-                <td>{l.title}</td>
-                <td>{l.condition ?? '-'}</td>
-                <td style={{ textAlign:'right' }}>${(l.price_cents/100).toFixed(2)}</td>
-                <td style={{ textAlign:'right' }}>{l.shipping_cents != null ? '$'+(l.shipping_cents/100).toFixed(2) : '-'}</td>
-                <td>{new Date(l.fetched_at).toLocaleString()}</td>
-                <td>{l.url ? <a href={l.url} target="_blank">View</a> : '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="wrap page">
+        {/* LEFT sticky column */}
+        <div className="card-left">
+          <div className="imgbox">
+            {card.image_url ? <img src={card.image_url} alt={card.name} style={{ maxWidth: '100%', maxHeight: '100%' }} /> : 'Card Image'}
+          </div>
+          <h1>{card.name} — {card.set_name} ({card.release_year || ''}) • #{card.number}</h1>
+          <div className="muted">{card.rarity || '—'} • {card.language || 'EN'} • Market opens daily 10:00 AM ET • Hot cards hourly</div>
+          <div className="cta-row">
+            <button className="cta">+ Add to Watchlist</button>
+            <button className="cta">+ Add to Collection</button>
+          </div>
+        </div>
+
+        {/* RIGHT column */}
+        <div className="rightcol">
+          <div className="summary"><h3>🔥 Price Summary</h3></div>
+          <div className="chart"><div className="chartbox">[chart]</div></div>
+          <div className="table-card">
+            <div className="tablewrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th>Title</th>
+                    <th>Condition</th>
+                    <th style={{ textAlign:'right' }}>Price</th>
+                    <th style={{ textAlign:'right' }}>Shipping</th>
+                    <th>Last Updated</th>
+                    <th>Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listings.map((l:any)=>(
+                    <tr key={l.id}>
+                      <td>{l.source_code === 'ptcg' ? 'Pokémon TCG API' : l.source_code === 'ebay_sandbox' ? 'eBay (Sandbox Demo)' : l.source_code}</td>
+                      <td>{l.title}</td>
+                      <td>{l.condition ?? '-'}</td>
+                      <td style={{ textAlign:'right' }}>${(l.price_cents/100).toFixed(2)}</td>
+                      <td style={{ textAlign:'right' }}>{l.shipping_cents != null ? '$'+(l.shipping_cents/100).toFixed(2) : '-'}</td>
+                      <td>{new Date(l.fetched_at).toLocaleString()}</td>
+                      <td>{l.url ? <a href={l.url} target="_blank">View</a> : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <p style={{ marginTop:8, fontSize:12, color:'#666' }}>
-        Last Updated by Source: {Object.entries(last_updated_by_source).map(([k,v])=>`${k}: ${new Date(v as string).toLocaleString()}`).join(' • ') || '—'}
-      </p>
+      <div className="wrap">
+        <footer className="muted" style={{ fontSize:12, marginTop:16 }}>
+          Last Updated by Source: {Object.entries(last_updated_by_source).map(([k,v])=>`${k}: ${new Date(v as string).toLocaleString()}`).join(' • ') || '—'}
+        </footer>
+      </div>
     </Layout>
   );
 }
