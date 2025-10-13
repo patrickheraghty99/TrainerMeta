@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TrainerMeta — Search</title>
+<style>
+  :root { --bg:#fff; --fg:#1b1b1f; --muted:#666; --line:#e7e7ea; --brand:#3b6df2; }
+  html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+  a{color:var(--brand);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  header.sticky{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);z-index:10;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+  .nav{display:flex;align-items:center;gap:14px;justify-content:space-between}
+  .nav-left{display:flex;align-items:center;gap:14px}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700}
+  .brand .logo{width:28px;height:28px;border-radius:6px;background:rgba(59,109,242,.12)}
+  .nav-links{display:flex;gap:12px;flex-wrap:wrap}
+  .nav-cta{display:flex;gap:12px;align-items:center}
+  .btn{border:1px solid var(--line);padding:8px 10px;border-radius:8px;background:#fff}
+  .select{border:1px solid var(--line);padding:6px 8px;border-radius:8px;background:#fff}
+
+  .layout{display:grid;grid-template-columns:1.1fr 0.9fr;gap:16px;margin-top:12px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:12px}
+  .muted{color:var(--muted)}
+
+  .top-hot-mobile{display:none;margin-bottom:10px}
+  .hot-mini{display:flex;gap:8px}
+  .hot-mini .mini{flex:1;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;gap:8px;align-items:center}
+  .mini .thumb{width:36px;height:48px;background:#fafafa;border:1px solid var(--line);border-radius:6px}
+
+  .searchbox{display:flex;gap:8px;align-items:center}
+  .searchbox input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+  .search-actions{display:flex;gap:8px}
+
+  /* Filters under search (no PSA filter) */
+  .filters{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+  .filters .select{width:100%}
+  .filters .row{display:flex;gap:6px;align-items:center}
+
+  .bar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:10px 0}
+
+  /* Stable container so search box doesn't bounce */
+  .grid-shell{min-height:280px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .grid .item{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center}
+  .img{width:60px;height:80px;background:#fafafa;border:1px solid var(--line);border-radius:8px;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+
+  .hot-list .row{display:grid;grid-template-columns:48px 36px 1fr 70px 60px;gap:8px;padding:6px;border-bottom:1px solid var(--line);align-items:center}
+  .hot-rank{font-weight:800;text-align:center}
+  .hot-thumb{width:36px;height:48px;background:#fafafa;border:1px solid var(--line);border-radius:6px}
+  .hot-pct{font-weight:700;color:#1f7a1f;text-align:right}
+  .hot-delta{font-size:12px;color:#666;text-align:right}
+  .hot-title a{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+
+  @media (max-width: 900px){
+    .layout{grid-template-columns:1fr}
+    .grid{grid-template-columns:1fr}
+    .filters{grid-template-columns:1fr 1fr}
+    .top-hot-mobile{display:block}
+  }
+</style>
+</head>
+<body>
+  <header class="sticky">
+    <div class="wrap nav">
+      <div class="nav-left">
+        <div class="brand"><div class="logo"></div> TrainerMeta</div>
+        <nav class="nav-links">
+          <a href="#">Home</a><a href="#">About</a><a href="#">Legal</a><a href="#">Contact</a>
+        </nav>
+      </div>
+      <div class="nav-cta">
+        <a class="btn" href="#">Login</a>
+        <select class="select"><option>USD</option><option>EUR</option><option>GBP</option><option>JPY</option></select>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap layout">
+    <!-- LEFT: (Mobile-only) Top Hot Cards above search -->
+    <div class="top-hot-mobile">
+      <h3>🔥 Top Hot Cards</h3>
+      <div class="hot-mini" id="hotTop3">
+        <!-- injected -->
+      </div>
+    </div>
+
+    <!-- LEFT: search & results -->
+    <div class="card">
+      <h2>Search</h2>
+
+      <div class="searchbox">
+        <input id="q" placeholder="Type card name, set, or number… (e.g., Charizard 4/102)" />
+        <div class="search-actions">
+          <button class="btn" id="clear">Clear</button>
+        </div>
+      </div>
+
+      <!-- Filters directly under the search box (no PSA filter here) -->
+      <div class="filters" id="filters">
+        <div class="row"><span class="muted">Set:</span>
+          <select class="select" id="set">
+            <option value="">Any</option><option>Base Set</option><option>Evolutions</option><option>Neo Genesis</option>
+          </select>
+        </div>
+        <div class="row"><span class="muted">Language:</span>
+          <select class="select" id="lang"><option>EN</option></select>
+        </div>
+        <div class="row"><span class="muted">Condition:</span>
+          <select class="select" id="cond"><option value="">Any</option><option>NM</option><option>LP</option><option>MP</option><option>HP</option><option>Unspecified</option></select>
+        </div>
+        <div class="row"><span class="muted">Price:</span>
+          <input class="select" id="min" style="width:90px" placeholder="$min" /> — <input class="select" id="max" style="width:90px" placeholder="$max" />
+        </div>
+      </div>
+
+      <div class="bar">
+        <div class="muted"><span id="count">0</span> results</div>
+        <div>
+          Sort:
+          <select class="select" id="sort">
+            <option value="relevance">Relevance</option>
+            <option value="name">Name A–Z</option>
+            <option value="low">Lowest Price</option>
+            <option value="high">Highest Price</option>
+          </select>
+          View:
+          <select class="select" id="view">
+            <option>Grid</option><option>List</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Keeps height so the input doesn’t bounce while typing -->
+      <div class="grid-shell">
+        <div class="grid" id="grid"></div>
+      </div>
+
+      <div style="text-align:center;margin-top:10px;"><a href="#" class="btn" id="more">Load more</a></div>
+    </div>
+
+    <!-- RIGHT: Hot Cards (desktop) -->
+    <aside class="card">
+      <h3>🔥 Hot Cards Today <span class="muted">(hourly)</span></h3>
+      <div class="hot-list" id="hotList">
+        <!-- uniform rows: Rank | Thumb | Title | % | Δ -->
+        <!-- injected -->
+      </div>
+    </aside>
+  </div>
+
+  <div class="wrap">
+    <footer>
+      <div>© TrainerMeta · Independent tracker. Prices change. Uses permitted APIs; no scraping. · <a href="#">Privacy</a> · <a href="#">Terms</a> · <a href="#">Affiliate</a> · <a href="#">Trademark</a> · <a href="#">Credits</a></div>
+    </footer>
+  </div>
+
+<script>
+  // Mock catalog results (1 row per CARD, not per listing)
+  // Each card has available PSA grades; "from" shows the lowest price of the highest PSA available.
+  const items = [
+    { id:'base-4-102', name:'Charizard', set:'Base Set', num:'4/102',
+      grades:{ PSA10:4200, PSA9:1250, RAW:320 } },
+    { id:'neo-1-64', name:'Lugia', set:'Neo Genesis', num:'1/64',
+      grades:{ PSA9:2100, RAW:610 } },
+    { id:'evol-11-108', name:'Charizard', set:'Evolutions', num:'11/108',
+      grades:{ PSA9:1250, RAW:220 } },
+    { id:'sv-125-197', name:'Charizard ex', set:'Obsidian Flames', num:'125/197',
+      grades:{ RAW:75 } },
+    { id:'cele-4-25', name:'Pikachu', set:'Celebrations', num:'4/25',
+      grades:{ RAW:45 } },
+  ];
+
+  function highestPSAAvailable(grades){
+    if (grades.PSA10) return {label:'PSA 10', price:grades.PSA10};
+    if (grades.PSA9)  return {label:'PSA 9',  price:grades.PSA9};
+    if (grades.PSA8)  return {label:'PSA 8',  price:grades.PSA8};
+    if (grades.RAW)   return {label:'Raw',    price:grades.RAW};
+    return {label:'—', price:null};
+  }
+
+  const grid = document.getElementById('grid');
+  const q = document.getElementById('q');
+  const sortSel = document.getElementById('sort');
+  const count = document.getElementById('count');
+  const more = document.getElementById('more');
+  const setSel = document.getElementById('set');
+  const langSel = document.getElementById('lang');
+  const condSel = document.getElementById('cond');
+  const minInput = document.getElementById('min');
+  const maxInput = document.getElementById('max');
+
+  let showN = 20;
+
+  function applyFilters(list){
+    const term = (q.value||'').toLowerCase();
+    let out = list.filter(x=>(x.name+' '+x.set+' '+x.num).toLowerCase().includes(term));
+    if (setSel.value) out = out.filter(x=>x.set===setSel.value);
+    // lang/cond placeholders for future (catalog-level)
+    const minV = parseFloat(minInput.value||''); const maxV = parseFloat(maxInput.value||'');
+    if (!isNaN(minV)) out = out.filter(x=> (highestPSAAvailable(x.grades).price||0) >= minV);
+    if (!isNaN(maxV)) out = out.filter(x=> (highestPSAAvailable(x.grades).price||1e12) <= maxV);
+    return out;
+  }
+
+  function render(){
+    let out = applyFilters(items);
+    // Sort
+    const s = sortSel.value;
+    out.sort((a,b)=>{
+      if (s==='relevance') return 0;
+      if (s==='name') return a.name.localeCompare(b.name) || a.set.localeCompare(b.set);
+      if (s==='low') return (highestPSAAvailable(a.grades).price||Infinity) - (highestPSAAvailable(b.grades).price||Infinity);
+      if (s==='high') return (highestPSAAvailable(b.grades).price||-Infinity) - (highestPSAAvailable(a.grades).price||-Infinity);
+      return 0;
+    });
+
+    count.textContent = out.length;
+    grid.innerHTML = '';
+    out.slice(0,showN).forEach(x=>{
+      const top = highestPSAAvailable(x.grades);
+      const el = document.createElement('a');
+      el.href = 'card.html'; // placeholder
+      el.className = 'item';
+      el.innerHTML = `
+        <div class="img">Img</div>
+        <div style="min-width:0">
+          <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.name} (${x.set})</div>
+          <div class="muted">${x.set} • #${x.num}</div>
+          <div>From $${top.price?top.price.toLocaleString():'—'} &nbsp; <span class="muted">${top.label}</span></div>
+          <div class="muted">Updated 10:00 AM ET</div>
+        </div>`;
+      grid.appendChild(el);
+    });
+  }
+
+  q.addEventListener('input', ()=>{ showN=20; render(); });
+  sortSel.addEventListener('change', render);
+  document.getElementById('clear').addEventListener('click', ()=>{ q.value=''; setSel.value=''; minInput.value=''; maxInput.value=''; render(); });
+  setSel.addEventListener('change', render);
+  langSel.addEventListener('change', render);
+  condSel.addEventListener('change', render);
+  minInput.addEventListener('input', render);
+  maxInput.addEventListener('input', render);
+  more.addEventListener('click', (e)=>{ e.preventDefault(); showN+=20; render(); });
+
+  /* Desktop Hot Cards (with thumbs) + Mobile Top 3 banner */
+  const hotData = [
+    { rank:1, title:'Charizard (Base Set)', pct:'+12%', delta:'▲ 5', href:'card.html' },
+    { rank:2, title:'Umbreon (Eevee Heroes)', pct:'+4%',  delta:'▼ 2', href:'card.html' },
+    { rank:3, title:'Pikachu (Illustration)', pct:'+18%', delta:'new', href:'card.html' },
+    { rank:4, title:'Lugia (Neo Genesis)', pct:'+6%', delta:'▲ 1', href:'card.html' },
+    { rank:5, title:'Charizard ex (Obsidian Flames)', pct:'+3%', delta:'—', href:'card.html' },
+  ];
+  const hotList = document.getElementById('hotList');
+  function renderHotList(){
+    hotList.innerHTML = '';
+    hotData.forEach(h=>{
+      const row = document.createElement('div'); row.className='row';
+      row.innerHTML = `
+        <div class="hot-rank">${h.rank}</div>
+        <div class="hot-thumb"></div>
+        <div class="hot-title"><a href="${h.href}">${h.title}</a></div>
+        <div class="hot-pct">${h.pct}</div>
+        <div class="hot-delta">${h.delta}</div>`;
+      hotList.appendChild(row);
+    });
+  }
+  const hotTop3 = document.getElementById('hotTop3');
+  function renderHotTop3(){
+    hotTop3.innerHTML = '';
+    hotData.slice(0,3).forEach(h=>{
+      const card = document.createElement('a'); card.href=h.href; card.className='mini';
+      card.innerHTML = `<div class="thumb"></div><div style="min-width:0"><div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.title}</div><div class="muted">${h.pct} · ${h.delta}</div></div>`;
+      hotTop3.appendChild(card);
+    });
+  }
+
+  renderHotList();
+  renderHotTop3();
+  render();
+</script>
+</body>
+</html>
