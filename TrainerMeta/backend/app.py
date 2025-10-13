@@ -78,17 +78,57 @@ for s in SEALED:
     SEALED_LISTINGS[sid] = []
     SEALED_LAST[sid] = {}
 
-async def ptcg_fetch_card_image_and_price(card: Dict[str, Any]):
-    qnum = card["number"].split("/")[0] if "/" in card["number"] else card["number"]
-    params = {"q": f'name:"{card["name"]}" set.name:"{card["set_name"]}" number:"{qnum}"'}
-    try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.get(PTCG_BASE, params=params, headers=headers_ptcg)
+def _normalize_set_name(s: str) -> str:
+    if not s:
+        return s
+    # Many PTCG set names omit the series prefix like "Scarlet & Violet—"; keep only suffix after em dash or hyphen.
+    for sep in ["—", "-", "–"]:
+        if sep in s:
+            # use the last segment after dash; e.g. "Scarlet & Violet—Obsidian Flames" -> "Obsidian Flames"
+            s = s.split(sep)[-1].strip()
+    # Trim repeated spaces
+    return " ".join(s.split())
+
+async def _ptcg_search_variants(client: httpx.AsyncClient, card: Dict[str, Any]) -> Dict[str, Any] | None:
+    name = card.get("name") or ""
+    set_name = card.get("set_name") or ""
+    set_name_norm = _normalize_set_name(set_name)
+    number_full = card.get("number") or ""
+    qnum = number_full.split("/")[0] if "/" in number_full else number_full
+
+    queries = []
+    # 1) strict: name + normalized set.name + number
+    if name and set_name_norm and qnum:
+        queries.append(f'name:"{name}" set.name:"{set_name_norm}" number:"{qnum}"')
+    # 2) relaxed: name + number
+    if name and qnum:
+        queries.append(f'name:"{name}" number:"{qnum}"')
+    # 3) relaxed: name + normalized set.name
+    if name and set_name_norm:
+        queries.append(f'name:"{name}" set.name:"{set_name_norm}"')
+    # 4) name only
+    if name:
+        queries.append(f'name:"{name}"')
+
+    for q in queries:
+        try:
+            r = await client.get(PTCG_BASE, params={"q": q}, headers=headers_ptcg)
             r.raise_for_status()
             data = r.json().get("data", [])
-            if not data:
+            if data:
+                # Prefer exact set.name match when possible
+                exact = [d for d in data if _normalize_set_name((d.get("set") or {}).get("name","")) == set_name_norm]
+                return (exact[0] if exact else data[0])
+        except Exception:
+            continue
+    return None
+
+async def ptcg_fetch_card_image_and_price(card: Dict[str, Any]):
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            c0 = await _ptcg_search_variants(client, card)
+            if not c0:
                 return
-            c0 = data[0]
             imgs = c0.get("images") or {}
             card["image_url"] = imgs.get("small") or imgs.get("large")
             tp = (c0.get("tcgplayer") or {}).get("prices") or {}
@@ -103,7 +143,7 @@ async def ptcg_fetch_card_image_and_price(card: Dict[str, Any]):
                 lst.append({
                     "id": f"ptcg-{card['id']}",
                     "source_code": "ptcg",
-                    "title": f"{card['name']} {card['set_name']} {card['number']}",
+                    "title": f"{card['name']} {card.get('set_name') or (c0.get('set') or {}).get('name','')} {card.get('number','')}",
                     "condition": None,
                     "price_cents": price_cents,
                     "shipping_cents": None,
@@ -115,6 +155,13 @@ async def ptcg_fetch_card_image_and_price(card: Dict[str, Any]):
                 LAST_BY_SOURCE.setdefault(card["id"], {})["ptcg"] = now_iso()
     except Exception:
         return
+
+@app.on_event("startup")
+async def preload_demo_cards():
+    # Prefetch images and baseline prices for all demo cards on startup
+    tasks = [ptcg_fetch_card_image_and_price(c) for c in CARDS.values()]
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 async def ebay_fetch_for_card(card: Dict[str, Any]):
     q = f'Pokemon {card["name"]} {card["set_name"]} {card["number"]}'
