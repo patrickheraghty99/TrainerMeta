@@ -24,6 +24,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <a href="/sealed">Sealed</a>
               <a href="/about">About</a>
               <a href="/privacy.html">Privacy</a>
+              <a href="/backend">Backend</a>
             </nav>
           </div>
           <div className="nav-cta">
