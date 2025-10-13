@@ -165,13 +165,23 @@ async def list_cards(request: Request):
     if g: return g
     return {"cards": list(CARDS.values())}
 
+
 @app.get("/api/cards/{card_id}", response_model=CardWithListings)
 async def card_detail(card_id: str, request: Request):
-    g = await guard(request); 
-    if g: return g
-    if card_id not in CARDS: 
+    g = await guard(request)
+    if g:
+        return g
+    if card_id not in CARDS:
         raise HTTPException(status_code=404, detail="Card not found")
-    return {"card": CARDS[card_id], "listings": LISTINGS.get(card_id, []), "last_updated_by_source": LAST_BY_SOURCE.get(card_id, {})}
+    card = CARDS[card_id]
+    # Fetch image if not already present
+    if not card.get("image_url"):
+        await ptcg_fetch_card_image_and_price(card)
+    return {
+        "card": card,
+        "listings": LISTINGS.get(card_id, []),
+        "last_updated_by_source": LAST_BY_SOURCE.get(card_id, {})
+    }
 
 @app.get("/api/sealed", response_model=SealedListResponse)
 async def list_sealed(request: Request):
