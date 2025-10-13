@@ -1,5 +1,5 @@
 // frontend/pages/card/[id].tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '../../components/Layout';
 import { apiGet } from '../../lib/api';
 
@@ -19,6 +19,23 @@ export default function CardPage({ data }: { data: any }) {
     const nv = [card.id, ...v.filter((x:string)=>x!==card.id)].slice(0, 10);
     localStorage.setItem(key, JSON.stringify(nv));
   }, [card.id]);
+
+  // Hydration-safe date rendering
+  const [clientListings, setClientListings] = useState<any[]>([]);
+  const [clientLastUpdated, setClientLastUpdated] = useState<string>('');
+
+  useEffect(() => {
+    // Format listings dates on client only
+    setClientListings(listings.map((l:any) => ({
+      ...l,
+      fetched_at_fmt: new Date(l.fetched_at).toLocaleString()
+    })));
+    setClientLastUpdated(
+      Object.entries(last_updated_by_source)
+        .map(([k,v])=>`${k}: ${new Date(v as string).toLocaleString()}`)
+        .join(' • ') || '—'
+    );
+  }, [listings, last_updated_by_source]);
 
   return (
     <Layout>
@@ -58,14 +75,14 @@ export default function CardPage({ data }: { data: any }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {listings.map((l:any)=>(
+                  {clientListings.map((l:any)=>(
                     <tr key={l.id}>
                       <td>{l.source_code === 'ptcg' ? 'Pokémon TCG API' : l.source_code === 'ebay_sandbox' ? 'eBay (Sandbox Demo)' : l.source_code}</td>
                       <td>{l.title}</td>
                       <td>{l.condition ?? '-'}</td>
                       <td style={{ textAlign:'right' }}>${(l.price_cents/100).toFixed(2)}</td>
                       <td style={{ textAlign:'right' }}>{l.shipping_cents != null ? '$'+(l.shipping_cents/100).toFixed(2) : '-'}</td>
-                      <td>{new Date(l.fetched_at).toLocaleString()}</td>
+                      <td>{l.fetched_at_fmt}</td>
                       <td>{l.url ? <a href={l.url} target="_blank">View</a> : '-'}</td>
                     </tr>
                   ))}
@@ -78,7 +95,7 @@ export default function CardPage({ data }: { data: any }) {
 
       <div className="wrap">
         <footer className="muted" style={{ fontSize:12, marginTop:16 }}>
-          Last Updated by Source: {Object.entries(last_updated_by_source).map(([k,v])=>`${k}: ${new Date(v as string).toLocaleString()}`).join(' • ') || '—'}
+          Last Updated by Source: {clientLastUpdated}
         </footer>
       </div>
     </Layout>
